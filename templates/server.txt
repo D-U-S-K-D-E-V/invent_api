@@ -1,0 +1,11 @@
+from http.server import HTTPServer
+from routes.req_router import Request_Router
+
+def main():
+    PORT = $PORT_NUMBER$
+    server_address = ('localhost', PORT)
+    server = HTTPServer(server_address, Request_Router)
+    print('Server running on port: ' + str(PORT))
+    server.serve_forever()
+
+main()

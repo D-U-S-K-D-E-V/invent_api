@@ -1,0 +1,5 @@
+{
+    "python.analysis.useImportHeuristic": true,
+    "python.pythonPath": "$PROJECT_NAME$\\Scripts\\python.exe",
+    "python.defaultInterpreterPath": "$PROJECT_NAME$\\Scripts\\python.exe"
+}

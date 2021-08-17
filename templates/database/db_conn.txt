@@ -1,0 +1,51 @@
+import mysql.connector as conn
+import json
+
+class DB_Conn:
+
+    def __init__(self):
+        self.appdb = conn.connect(
+            host = $HOST_NAME$,
+            user = $USER_NAME$,
+            password = $PASSWORD$,
+            database = $DATABASE_NAME$
+        )
+
+    def select(self, query):
+        cursor = self.appdb.cursor()
+        cursor.execute(query)
+        columns = cursor.column_names
+        rows = cursor.fetchall()
+        convert_json = json.dumps(self.data_prep(columns, rows))
+        return convert_json
+
+    def insert(self, query):
+        cursor = self.appdb.cursor()
+        cursor.execute(query)
+        columns = cursor.column_names
+        rows = cursor.fetchall()
+        convert_json = json.dumps(self.data_prep(columns, rows))
+        self.appdb.commit()
+        self.appdb.close()
+        return convert_json
+
+    def update(self, query):
+        cursor = self.appdb.cursor()
+        cursor.execute(query)
+        columns = cursor.column_names
+        rows = cursor.fetchall()
+        convert_json = json.dumps(self.data_prep(columns, rows))
+        self.appdb.commit()
+        self.appdb.close()
+        return convert_json
+
+    def data_prep(self, columns, rows):
+        response = {}
+        x = 0
+        for item in rows:
+            row_data = {}
+            for c_name, c_data in zip(columns, item):
+                row_data[str(c_name)] = str(c_data)
+            response[str(x)] = row_data
+            x = x + 1
+        return response

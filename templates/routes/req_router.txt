@@ -1,0 +1,244 @@
+from http.server import BaseHTTPRequestHandler
+from database.queries import query_storage
+from database.classes.db_conn import DB_Conn
+import json
+
+class Request_Router(BaseHTTPRequestHandler):
+
+    def return_api_key(self):
+        return $API_KEY$
+
+    def res_text(self, response):
+        self.send_response(200)
+        self.send_header('content-type', 'text/html')
+        self.end_headers()
+        self.wfile.write(response.encode())
+        print("Response Sent " + response)
+        print("Path: " + self.path)
+
+    def res_json(self, response):
+        self.send_response(200)
+        self.send_header('content-type', 'application/json')
+        self.end_headers()
+        self.wfile.write(bytes(response.encode(encoding='utf_8')))
+        print("Response Sent: " + response)
+
+    def check_url(self, dictionary, condition, compare=''):
+        print(str(dictionary))
+        if condition == 'exists':    
+            try:
+                dictionary
+                print('Dictionary Element is valid')
+                return True
+            except KeyError:
+                print('Dictionary Element is invalid')
+                return False
+
+        elif condition == 'contains':
+            if compare == '':
+                print('To use compare feature, you must enter something to compare with.')
+                return False
+            else:
+                if compare in dictionary:
+                    print('The data "' + compare + '" does exist within the dictionary.')
+                    return True
+                else:
+                    print('The data "' + compare + '" does not exist within the dictionary.')
+                    return False
+
+        elif condition == 'equals':
+            if compare == '':
+                print('To use equal feature, you must enter something to equate to.')
+                return False
+            else:
+                if compare == dictionary:
+                    print('The data "' + compare + '" does equal the dictionary item.')
+                    return True
+                else:
+                    print('The data "' + compare + '" does not equal the dictionary item.')
+                    return False
+        else:
+            print('An unknown error occured.')
+            return False
+
+    def analyze_url(self, url, statement, body=''):
+        url_sections = url.split('/')
+        url_parts = {}
+
+        if statement == 'GET':
+            for n in url_sections:
+                detect_params = n.split('=')
+
+                if len(detect_params) == 1:
+                    url_parts['host'] = detect_params[0]
+                else:
+                    url_parts[detect_params[0]] = detect_params[1]
+
+        elif statement == 'POST' or statement == 'PUT':
+            
+            url_parts['body'] = body
+        
+            for n in url_sections:
+                detect_params = n.split('=')
+
+                if len(detect_params) == 1:
+                    url_parts['host'] = detect_params[0]
+                else:
+                    url_parts[detect_params[0]] = detect_params[1]
+
+        return url_parts
+
+    def evaluate_url(self, statement, url_structure):
+        api_key = self.return_api_key()
+        selects = query_storage.get_selects()
+        inserts = query_storage.get_inserts()
+        updates = query_storage.get_updates()
+
+        if statement == 'GET':
+
+            if self.check_url(url_structure['key'], 'exists') == False:
+                return False
+            elif self.check_url(url_structure['key'], 'equals', api_key) == False:
+                return False
+            elif self.check_url(url_structure['query'], 'exists') == False:
+                return False
+            elif self.check_url(selects[url_structure['query']], 'exists') == False:
+                return False
+            elif self.check_url(url_structure['query'], 'exists') == True and self.check_url(url_structure['query'], 'contains', 'match') == True:
+                if self.check_url(url_structure['filter'], 'exists') == False:
+                    return False
+                else:
+                    return True
+            elif self.check_url(url_structure['query'], 'exists') == True and self.check_url(url_structure['query'], 'contains', 'search') == True:
+                if self.check_url(url_structure['filter'], 'exists') == False:
+                    return False
+                else:
+                    return True
+            else:
+                return True
+
+        elif statement == 'POST':
+
+            if self.check_url(url_structure['key'], 'exists') == False:
+                return False
+            elif self.check_url(url_structure['key'], 'equals', api_key) == False:
+                return False
+            elif self.check_url(url_structure['query'], 'exists') == False:
+                return False
+            elif self.check_url(url_structure['body'], 'exists') == False:
+                return False
+            elif self.check_url(inserts[url_structure['query']], 'exists') == False:
+                return False
+            elif self.check_url(url_structure['query'], 'exists') == True and self.check_url(url_structure['query'], 'contains', 'match') == True:
+                if self.check_url(url_structure['filter'], 'exists') == False:
+                    return False
+                else:
+                    return True
+            elif self.check_url(url_structure['query'], 'exists') == True and self.check_url(url_structure['query'], 'contains', 'search') == True:
+                if self.check_url(url_structure['filter'], 'exists') == False:
+                    return False
+                else:
+                    return True
+            else:
+                return True
+
+        elif statement == 'PUT':
+            if self.check_url(url_structure['key'], 'exists') == False:
+                return False
+            elif self.check_url(url_structure['key'], 'equals', api_key) == False:
+                return False
+            elif self.check_url(url_structure['query'], 'exists') == False:
+                return False
+            elif self.check_url(url_structure['body'], 'exists') == False:
+                return False
+            elif self.check_url(updates[url_structure['query']], 'exists') == False:
+                return False
+            elif self.check_url(url_structure['query'], 'exists') == True and self.check_url(url_structure['query'], 'contains', 'match') == True:
+                if self.check_url(url_structure['body']['filter'], 'exists') == False:
+                    return False
+                else:
+                    return True
+            elif self.check_url(url_structure['query'], 'exists') == True and self.check_url(url_structure['query'], 'contains', 'search') == True:
+                if self.check_url(url_structure['body']['filter'], 'exists') == False:
+                    return False
+                else:
+                    return True
+            else:
+                return True
+        else:
+            print("Statement was not recognized")
+            return False
+
+    def create_query(self, statement, url_structure):
+        selects = query_storage.get_selects()
+        inserts = query_storage.get_inserts()
+        updates = query_storage.get_updates()
+
+        if statement == 'GET':
+            if self.check_url(url_structure['query'], 'contains', 'match') == True:
+                return selects[url_structure['query']].replace('$COLUMN_VALUE$', str(url_structure['filter']).replace('_', ' '))
+            elif self.check_url(url_structure['query'], 'contains', 'search') == True:
+                return selects[url_structure['query']].replace('$COLUMN_VALUE$', str(url_structure['filter']).replace('_', ' '))
+            else:
+                return selects[url_structure['query']]
+
+        elif statement == 'POST':
+            values_string = ''
+            loop_num = 0
+
+            for n in url_structure['body']:
+                if loop_num + 1 == len(url_structure['body']):
+                    if url_structure['body'][n].endswith('()') == True:
+                        values_string += url_structure['body'][n]
+                    else:
+                        values_string += "'" + url_structure['body'][n] + "'"
+                else:
+                    if url_structure['body'][n].endswith('()') == True:
+                        values_string += url_structure['body'][n] + ", "
+                    else:
+                        values_string += "'" + url_structure['body'][n] + "', "
+                loop_num = loop_num + 1
+
+            return inserts[url_structure['query']].replace('$VALUES$', values_string)
+        
+        elif statement == 'PUT':
+            print(str(updates[url_structure['query']].replace('$UPDATE_VALUE$', "'" + url_structure['body']['value'] + "'").replace('$FILTER_VALUE$', url_structure['body']['filter'])))
+            return updates[url_structure['query']].replace('$UPDATE_VALUE$', "'" + url_structure['body']['value'] + "'").replace('$FILTER_VALUE$', url_structure['body']['filter'])
+
+        else:
+            print('Statement was not recognized as valid.')
+            return False
+
+    def do_GET(self):
+        data_access = DB_Conn()
+        url_structure = self.analyze_url(str(self.path), 'GET')
+
+        if self.evaluate_url('GET', url_structure) == True:
+            return self.res_json(data_access.select(self.create_query('GET', url_structure)))
+
+        else:
+            print('An Error occured in executing query.')
+            return self.res_text('Error: URL failed evaluation.')
+
+    def do_POST(self):
+        data_access = DB_Conn()
+        content_length = int(self.headers.get('Content-Length'))
+        body = json.loads(self.rfile.read(content_length).decode('utf-8'))
+        url_structure = self.analyze_url(str(self.path), 'POST', body)
+        
+        if self.evaluate_url('POST', url_structure) == True:
+            return self.res_json(data_access.insert(self.create_query('POST', url_structure)))
+        else:
+            return self.res_text('Error: URL failed evaluation.')
+    
+    def do_PUT(self):
+        data_access = DB_Conn()
+        content_length = int(self.headers.get('Content-Length'))
+        body = json.loads(self.rfile.read(content_length).decode('utf-8'))
+        url_structure = self.analyze_url(str(self.path), 'POST', body)
+        
+        if self.evaluate_url('PUT', url_structure) == True:
+            return self.res_json(data_access.update(self.create_query('PUT', url_structure)))
+        else:
+            return self.res_text('Error: URL failed evaluation.')
+

@@ -1,0 +1,4 @@
+{
+    "python.analysis.useImportHeuristic": true,
+    "python.pythonPath": "sudden-api\\Scripts\\python.exe"
+}
